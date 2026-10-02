@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="今天吃什么？让随机美食轮盘帮你做决定。" />
+  <title>今天吃什么？</title>
+  <style>
+    :root {
+      --ink: #24313a;
+      --orange: #ff7043;
+      --yellow: #ffd166;
+      --cream: #fff8ed;
+      --green: #3a9d7a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 10% 8%, #ffe29a 0 4%, transparent 4.2%),
+        radial-gradient(circle at 88% 12%, #ffc6b0 0 7%, transparent 7.2%),
+        linear-gradient(135deg, #fff8ed 0%, #fff1d9 100%);
+    }
+
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 40px; }
+
+    .eyebrow { margin: 0; color: var(--green); font-size: .82rem; font-weight: 800; letter-spacing: .16em; }
+    h1 { margin: 8px 0 10px; font-size: clamp(2.4rem, 7vw, 4.8rem); letter-spacing: -.07em; line-height: 1; }
+    .lead { margin: 0; color: #657079; font-size: 1.05rem; }
+
+    .app-grid { display: grid; grid-template-columns: 1fr .9fr; gap: 28px; align-items: center; margin-top: 38px; }
+    .wheel-wrap { position: relative; width: min(100%, 460px); margin: auto; aspect-ratio: 1; }
+    .pointer { position: absolute; z-index: 2; top: -8px; left: 50%; width: 0; height: 0; transform: translateX(-50%); border-right: 18px solid transparent; border-left: 18px solid transparent; border-top: 38px solid var(--ink); filter: drop-shadow(0 3px 0 rgba(0,0,0,.12)); }
+    .wheel {
+      width: 100%; height: 100%; display: grid; place-items: center; border-radius: 50%;
+      background: conic-gradient(#ff8c61 0 45deg, #ffd166 45deg 90deg, #64c4a2 90deg 135deg, #9cb6ed 135deg 180deg, #eea1b3 180deg 225deg, #e5b473 225deg 270deg, #92c7d3 270deg 315deg, #c8b4df 315deg);
+      box-shadow: 0 18px 0 #d8c9b3, 0 28px 38px rgba(85, 60, 28, .2); transition: transform 2.8s cubic-bezier(.15,.7,.16,1);
+    }
+    .wheel::before { content: ""; width: 84%; height: 84%; border: 3px dashed rgba(255,255,255,.6); border-radius: inherit; }
+    .wheel-center { position: absolute; display: grid; width: 42%; aspect-ratio: 1; place-items: center; padding: 14px; border: 7px solid var(--cream); border-radius: 50%; background: var(--ink); color: white; text-align: center; font-weight: 800; line-height: 1.25; box-shadow: 0 5px 0 rgba(0,0,0,.16); }
+
+    .result-card { min-height: 310px; padding: 32px; border: 1px solid rgba(36,49,58,.08); border-radius: 28px; background: rgba(255,255,255,.75); box-shadow: 0 18px 36px rgba(100,76,43,.1); }
+    .result-label { color: #8a7564; font-size: .9rem; font-weight: 700; }
+    .result { min-height: 83px; margin: 16px 0 8px; color: var(--orange); font-size: clamp(2.2rem, 5vw, 3.3rem); font-weight: 900; letter-spacing: -.06em; line-height: 1.12; }
+    .hint { min-height: 46px; margin: 0 0 24px; color: #68737c; line-height: 1.55; }
+    button { width: 100%; padding: 16px 20px; border: 0; border-radius: 15px; cursor: pointer; background: var(--ink); color: white; font: inherit; font-size: 1.05rem; font-weight: 800; box-shadow: 0 5px 0 #10171b; transition: transform .18s, box-shadow .18s; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #10171b; }
+    button:active { transform: translateY(3px); box-shadow: 0 2px 0 #10171b; }
+    button:focus-visible { outline: 4px solid var(--yellow); outline-offset: 3px; }
+    button:disabled { cursor: wait; opacity: .72; transform: none; }
+
+    .choices { margin-top: 38px; padding: 22px 24px; border-radius: 20px; background: rgba(255,255,255,.5); }
+    .choices h2 { margin: 0 0 14px; font-size: 1rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 9px; }
+    .tag { padding: 8px 12px; border-radius: 999px; background: white; color: #55616a; font-size: .9rem; }
+    footer { margin-top: 28px; color: #8a7564; font-size: .88rem; text-align: center; }
+
+    @media (max-width: 680px) { main { padding-top: 32px; } .app-grid { grid-template-columns: 1fr; } .wheel-wrap { width: min(84vw, 400px); } .result-card { min-height: auto; } }
+    @media (prefers-reduced-motion: reduce) { .wheel { transition-duration: .01ms; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">DAILY FOOD DECIDER</p>
+      <h1>今天吃什么？</h1>
+      <p class="lead">把选择困难交给轮盘，认真吃好每一餐。</p>
+    </header>
+
+    <section class="app-grid" aria-label="随机美食抽取器">
+      <div class="wheel-wrap" aria-hidden="true">
+        <div class="pointer"></div>
+        <div class="wheel" id="wheel"></div>
+        <div class="wheel-center">美食<br>轮盘</div>
+      </div>
+      <div class="result-card" aria-live="polite">
+        <div class="result-label">本次推荐</div>
+        <div class="result" id="result">按下按钮开吃</div>
+        <p class="hint" id="hint">今天的好运气，会转到哪一碗热腾腾的美味？</p>
+        <button id="drawButton" type="button">帮我决定！</button>
+      </div>
+    </section>
+
+    <section class="choices" aria-labelledby="choice-title">
+      <h2 id="choice-title">轮盘候选菜单</h2>
+      <div class="tags" id="tags"></div>
+    </section>
+    <footer>不再犹豫，享受这一餐。</footer>
+  </main>
+
+  <script>
+    const foods = [
+      { name: "番茄牛腩面", hint: "酸甜浓郁，来一碗暖暖胃。" },
+      { name: "日式咖喱饭", hint: "香浓咖喱配米饭，满足感拉满。" },
+      { name: "麻辣烫", hint: "想吃什么自己选，热辣又过瘾。" },
+      { name: "海南鸡饭", hint: "清爽鸡肉和油润米饭，刚刚好。" },
+      { name: "披萨", hint: "芝士会替你解决今天的烦恼。" },
+      { name: "酸菜鱼", hint: "酸爽开胃，适合分享的一餐。" },
+      { name: "烤肉", hint: "滋滋作响的快乐，值得安排。" },
+      { name: "沙拉轻食", hint: "给身体一点清爽的仪式感。" }
+    ];
+
+    const wheel = document.querySelector("#wheel");
+    const result = document.querySelector("#result");
+    const hint = document.querySelector("#hint");
+    const button = document.querySelector("#drawButton");
+    const tags = document.querySelector("#tags");
+    let rotation = 0;
+
+    tags.innerHTML = foods.map(food => `<span class="tag">${food.name}</span>`).join("");
+
+    button.addEventListener("click", () => {
+      const choice = foods[Math.floor(Math.random() * foods.length)];
+      rotation += 1440 + Math.floor(Math.random() * 360);
+      button.disabled = true;
+      button.textContent = "正在抽取...";
+      result.textContent = "转转转...";
+      hint.textContent = "美味即将揭晓，请稍等片刻！";
+      wheel.style.transform = `rotate(${rotation}deg)`;
+
+      window.setTimeout(() => {
+        result.textContent = choice.name;
+        hint.textContent = choice.hint;
+        button.disabled = false;
+        button.textContent = "再抽一次";
+      }, 2800);
+    });
+  </script>
+</body>
+</html>
